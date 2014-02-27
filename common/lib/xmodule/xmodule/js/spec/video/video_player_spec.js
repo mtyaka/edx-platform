@@ -712,6 +712,7 @@ function (VideoPlayer) {
                     state.videoEl = $('video, iframe');
 
                     spyOn(state.videoCaption, 'resize').andCallThrough();
+                    spyOn($.fn, 'trigger').andCallThrough();
                     state.videoControl.toggleFullScreen(jQuery.Event('click'));
                 });
 
@@ -726,7 +727,8 @@ function (VideoPlayer) {
 
                 it('tell VideoCaption to resize', function () {
                     expect(state.videoCaption.resize).toHaveBeenCalled();
-                    expect(state.resizer.setMode).toHaveBeenCalled();
+                    expect(state.resizer.setMode).toHaveBeenCalledWith('both');
+                    expect(state.resizer.delta.minus).toHaveBeenCalled();
                 });
             });
 
@@ -759,6 +761,7 @@ function (VideoPlayer) {
                     expect(state.videoCaption.resize).toHaveBeenCalled();
                     expect(state.resizer.setMode)
                         .toHaveBeenCalledWith('width');
+                    expect(state.resizer.delta.reset).toHaveBeenCalled();
                 });
             });
         });
