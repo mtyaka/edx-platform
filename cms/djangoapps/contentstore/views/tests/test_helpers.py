@@ -14,7 +14,7 @@ class HelpersTestCase(CourseTestCase):
     def test_xblock_studio_url(self):
         # Verify course URL
         self.assertEqual(xblock_studio_url(self.course),
-                         u'/course/MITx.999.Robot_Super_Course/branch/published/block/Robot_Super_Course')
+                         u'/course/MITx.999.Robot_Super_Course/branch/draft/block/Robot_Super_Course')
 
         # Verify chapter URL
         chapter = ItemFactory.create(parent_location=self.course.location, category='chapter',
@@ -30,13 +30,13 @@ class HelpersTestCase(CourseTestCase):
         vertical = ItemFactory.create(parent_location=sequential.location, category='vertical',
                                       display_name='Unit')
         self.assertEqual(xblock_studio_url(vertical),
-                         u'/unit/MITx.999.Robot_Super_Course/branch/published/block/Unit')
+                         u'/unit/MITx.999.Robot_Super_Course/branch/draft/block/Unit')
 
         # Verify child vertical URL
         child_vertical = ItemFactory.create(parent_location=vertical.location, category='vertical',
                                             display_name='Child Vertical')
         self.assertEqual(xblock_studio_url(child_vertical),
-                         u'/container/MITx.999.Robot_Super_Course/branch/published/block/Child_Vertical')
+                         u'/container/MITx.999.Robot_Super_Course/branch/draft/block/Child_Vertical')
 
         # Verify video URL
         video = ItemFactory.create(parent_location=child_vertical.location, category="video",
