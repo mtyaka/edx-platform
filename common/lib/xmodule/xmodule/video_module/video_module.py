@@ -439,7 +439,7 @@ class VideoModule(VideoFields, XModule):
         """
         if self.transcript_language == 'en':
             return asset(self.location, subs_id).data
-        # import ipdb; ipdb.set_trace()
+
         if not self.youtube_id_1_0:  # Non-youtube (HTML5) case:
             return get_or_create_sjson(self)
 
