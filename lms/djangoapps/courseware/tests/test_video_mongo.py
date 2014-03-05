@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Video xmodule tests in mongo."""
 from mock import patch, PropertyMock
-import json
 
 from . import BaseTestXmodule
 from .test_video_xml import SOURCE_XML
@@ -42,7 +41,7 @@ class TestVideoYouTube(TestVideo):
             'yt_test_timeout': 1500,
             'yt_test_url': 'https://gdata.youtube.com/feeds/api/videos/',
             'transcript_format': 'srt',
-            'transcript_formats_list': {'.srt': 'srt', '.txt': 'txt'},
+            'transcript_formats_list': {'SubRip (.srt) file': 'srt', 'Text (.txt) file': 'txt'},
             'transcript_language': 'en',
             'transcript_languages': '{"en": "English", "uk": "Ukrainian"}',
             'transcript_translation_url': self.item_descriptor.xmodule_runtime.handler_url(
@@ -106,7 +105,7 @@ class TestVideoNonYouTube(TestVideo):
             'yt_test_timeout': 1500,
             'yt_test_url': 'https://gdata.youtube.com/feeds/api/videos/',
             'transcript_format': 'srt',
-            'transcript_formats_list': {'.srt': 'srt', '.txt': 'txt'},
+            'transcript_formats_list': {'SubRip (.srt) file': 'srt', 'Text (.txt) file': 'txt'},
             'transcript_language': 'en',
             'transcript_languages': '{"en": "English"}',
             'transcript_translation_url': self.item_descriptor.xmodule_runtime.handler_url(
@@ -196,7 +195,7 @@ class TestGetHtmlMethod(BaseTestXmodule):
             'yt_test_timeout': 1500,
             'yt_test_url': 'https://gdata.youtube.com/feeds/api/videos/',
             'transcript_format': 'srt',
-            'transcript_formats_list': {'.srt': 'srt', '.txt': 'txt'},
+            'transcript_formats_list': {'SubRip (.srt) file': 'srt', 'Text (.txt) file': 'txt'},
         }
 
         for data in cases:
@@ -312,7 +311,7 @@ class TestGetHtmlMethod(BaseTestXmodule):
             'yt_test_timeout': 1500,
             'yt_test_url': 'https://gdata.youtube.com/feeds/api/videos/',
             'transcript_format': 'srt',
-            'transcript_formats_list': {'.srt': 'srt', '.txt': 'txt'},
+            'transcript_formats_list': {'SubRip (.srt) file': 'srt', 'Text (.txt) file': 'txt'},
             'transcript_language': 'en',
             'transcript_languages': '{"en": "English"}',
         }

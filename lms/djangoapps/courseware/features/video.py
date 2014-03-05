@@ -3,13 +3,14 @@
 
 from lettuce import world, step
 import json
+import os
+import requests
+from functools import partial
 from common import i_am_registered_for_the_course, section_location, visit_scenario_item
 from django.utils.translation import ugettext as _
 from django.conf import settings
 from cache_toolbox.core import del_cached_content
 from xmodule.contentstore.content import StaticContent
-import os
-from functools import partial
 from xmodule.contentstore.django import contentstore
 TEST_ROOT = settings.COMMON_TEST_DATA_ROOT
 LANGUAGES = settings.ALL_LANGUAGES
@@ -25,22 +26,19 @@ HTML5_SOURCES = [
 HTML5_SOURCES_INCORRECT = [
     'https://s3.amazonaws.com/edx-course-videos/edx-intro/edX-FA12-cware-1_100.mp99',
 ]
-VIDEO_BUTTONS = {
-    'CC': '.hide-subtitles',
-    'volume': '.volume',
-    'play': '.video_control.play',
-    'pause': '.video_control.pause',
-}
-VIDEO_MENUS = {
-    'language': '.lang .menu',
-    'speed': '.speed .menu',
-}
 
 VIDEO_BUTTONS = {
     'CC': '.hide-subtitles',
     'volume': '.volume',
     'play': '.video_control.play',
     'pause': '.video_control.pause',
+    'download_transcript': '.video-tracks > a',
+}
+
+VIDEO_MENUS = {
+    'language': '.lang .menu',
+    'speed': '.speed .menu',
+    'download_transcript': '.video-tracks .menu',
 }
 
 coursenum = 'test_course'
@@ -127,14 +125,24 @@ def add_video_to_course(course, player_mode, hashes, display_name='Video'):
     if hashes:
         kwargs['metadata'].update(hashes[0])
 
+    course_location =world.scenario_dict['COURSE'].location
+
+    conversions = {
+        'transcripts': json.loads,
+        'download_track': json.loads,
+        'download_video': json.loads,
+    }
+
+    for key in kwargs['metadata']:
+        if key in conversions:
+            kwargs['metadata'][key] = conversions[key](kwargs['metadata'][key])
+
+    if 'sub' in kwargs['metadata']:
+        _upload_file(kwargs['metadata']['sub'], 'en', course_location)
+
     if 'transcripts' in kwargs['metadata']:
-        kwargs['metadata']['transcripts'] = json.loads(kwargs['metadata']['transcripts'])
-
-        if 'sub' in kwargs['metadata']:
-            _upload_file(kwargs['metadata']['sub'], 'en', world.scenario_dict['COURSE'].location)
-
         for lang, videoId in kwargs['metadata']['transcripts'].items():
-            _upload_file(videoId, lang, world.scenario_dict['COURSE'].location)
+            _upload_file(videoId, lang, course_location)
 
     world.scenario_dict['VIDEO'] = world.ItemFactory.create(**kwargs)
 
@@ -295,7 +303,84 @@ def seek_video_to_n_seconds(_step, seconds):
     world.browser.execute_script(jsCode)
 
 
+@step('I can download transcript in "([^"]*)" format$')
+def i_can_download_transcript(_step, format):
+    formats = {
+        'srt': {
+            'content': '0\n00:00:00,270',
+            'mime_type': 'application/x-subrip'
+        },
+        'txt': {
+            'content': 'Hi, welcome to Edx.',
+            'mime_type': 'text/plain'
+        },
+    }
+
+    url = world.css_find(VIDEO_BUTTONS['download_transcript'])[0]['href']
+    request = RequestHandler()
+
+    assert request.get(url).is_success()
+    assert request.check_header('content-type', formats[format]['mime_type'])
+    assert request.content.startswith(formats[format]['content'])
+
+
+@step('I select the transcript format "([^"]*)"$')
+def select_transcript_format(_step, format):
+    button = world.css_find('.video-tracks .menu-container > a').first
+    # _open_menu('download_transcript')
+    button.mouse_over()
+    assert button.text.strip() == '...'
+
+    menu_selector = VIDEO_MENUS['download_transcript']
+    menu_items = world.css_find(menu_selector + ' a')
+
+    for item in menu_items:
+        if item['data-value'] == format:
+            item.click()
+            world.wait_for_ajax_complete()
+            break
+
+    world.css_find(menu_selector + ' .active a')[0]['data-value'] == format
+    assert button.text.strip() == '.' + format
+
+
 def _open_menu(menu):
     world.browser.execute_script("$('{selector}').parent().addClass('open')".format(
         selector=VIDEO_MENUS[menu]
     ))
+
+
+class RequestHandler(object):
+    def get(self, url):
+        """
+        Sends a request.
+        """
+        session_id_cookie = ({i['name']:i['value']} for i in  world.browser.cookies.all() if i['name']==u'sessionid').next()
+        response = requests.get(url, cookies=session_id_cookie)
+        self.response = response
+        self.status_code = response.status_code
+        self.headers = response.headers
+        self.content = response.content
+
+        return self
+
+    def is_success(self):
+        """
+        Returns `True` if the response was succeed, otherwise, returns `False`.
+        """
+        if self.status_code < 400:
+            return True
+        return False
+
+    def check_header(self, name, value):
+        """
+        Returns `True` if the response header exist and has appropriate value,
+        otherwise, returns `False`.
+        """
+        try:
+            if value in self.headers[name]:
+                return True
+        except Exception:
+            pass
+
+        return False

@@ -51,7 +51,7 @@ div.video {
       > a {
         @include transition(all 0.25s ease-in-out 0s);
         @include font-size(14);
-        display: inline-block;
+        float: left;
         border-radius: 3px 0 0 3px;
         background-color: $very-light-text;
         padding: ($baseline*.75);

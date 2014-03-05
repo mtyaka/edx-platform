@@ -90,3 +90,19 @@ Feature: LMS Video component
     Then I see "好 各位同学" text in the captions
     And I select language with code "en"
     And I see "Hi, welcome to Edx." text in the captions
+
+  # 10
+  Scenario: Language menu in Video component works correctly
+    Given I am registered for the course "test_course"
+    And it has a video "A" in "Youtube" mode in position "1" of sequential:
+      | sub         | download_track |
+      | OEoXaMPEzfM | true           |
+    And a video "B" in "Youtube" mode in position "2" of sequential:
+      | sub         | download_track |
+      | OEoXaMPEzfM | true           |
+    And I open the section with videos
+    And I can download transcript in "srt" format
+    And I select the transcript format "txt"
+    And I can download transcript in "txt" format
+    When I open video "B"
+    Then I can download transcript in "txt" format

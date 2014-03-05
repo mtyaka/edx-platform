@@ -339,13 +339,15 @@ class VideoModule(VideoFields, XModule):
         if format == 'txt':
             text = json.loads(data)['text']
             str_subs = HTMLParser().unescape("\n".join(text))
+            mime_type = 'text/plain'
         else:
             str_subs = generate_srt_from_sjson(json.loads(data), speed=1.0)
+            mime_type = 'application/x-subrip'
         if not str_subs:
             log.debug('generate_srt_from_sjson produces no subtitles')
             raise ValueError
 
-        return str_subs, format
+        return str_subs, format, mime_type
 
     @XBlock.handler
     def transcript(self, request, dispatch):
@@ -383,7 +385,7 @@ class VideoModule(VideoFields, XModule):
 
         elif dispatch == 'download':
             try:
-                subs, format = self.get_transcript(format=self.transcript_format)
+                subs, format, mime_type = self.get_transcript(format=self.transcript_format)
             except (NotFoundError, ValueError, KeyError):
                 log.debug("Video@download exception")
                 response = Response(status=404)
@@ -397,7 +399,7 @@ class VideoModule(VideoFields, XModule):
                         )),
                     ]
                 )
-                response.content_type = "application/x-subrip"
+                response.content_type = mime_type
 
         elif dispatch == 'available_translations':
             available_translations = []

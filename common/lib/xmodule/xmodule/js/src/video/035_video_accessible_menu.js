@@ -15,7 +15,9 @@ function () {
             return dfd.promise();
         }
 
-        state.videoAccessibleMenu = {};
+        state.videoAccessibleMenu = {
+            value: state.storage.getItem('transcript_format')
+        };
 
         _initialize(state);
         dfd.resolve();
@@ -39,7 +41,8 @@ function () {
     //     these functions will get the 'state' object as a context.
     function _makeFunctionsPublic(state) {
         var methodsDict = {
-            changeFileType: changeFileType
+            changeFileType: changeFileType,
+            setValue: setValue
         };
 
         state.bindTo(methodsDict, state.videoAccessibleMenu, state);
@@ -61,13 +64,20 @@ function () {
             button = container.children('a.menu-button'),
             menu = container.children('ol.menu'),
             menuItems = menu.children('li.menu-item'),
-            menuItemsLinks = menuItems.children('a.menu-item-link');
+            menuItemsLinks = menuItems.children('a.menu-item-link'),
+            value = state.videoAccessibleMenu.value;
 
-        state.videoAccessibleMenu.container = container;
-        state.videoAccessibleMenu.button = button;
-        state.videoAccessibleMenu.menu = menu;
-        state.videoAccessibleMenu.menuItems = menuItems;
-        state.videoAccessibleMenu.menuItemsLinks = menuItemsLinks;
+        $.extend(state.videoAccessibleMenu, {
+            container: container,
+            button: button,
+            menu: menu,
+            menuItems: menuItems,
+            menuItemsLinks: menuItemsLinks
+        });
+
+        if (value) {
+            state.setValue(value);
+        }
     }
 
     function _addAriaAttributes(state) {
@@ -112,14 +122,25 @@ function () {
         // element to have clicks close the menu when they happen
         // outside of it. We namespace the click event to easily remove it (and
         // only it) in _closeMenu.
+        var menu = state.videoAccessibleMenu;
+
         $(window).on('click.currentMenu', _clickHandler.bind(state));
-        state.videoAccessibleMenu.container.addClass('open');
+        menu.container.addClass('open');
+        menu.button.text('...');
+
+        // @TODO: onOpen callback
     }
 
     function _closeMenu(state) {
         // Remove the previously added clickHandler from window element.
+        var menu = state.videoAccessibleMenu,
+            msg = '.' + menu.value;
+
         $(window).off('click.currentMenu');
-        state.videoAccessibleMenu.container.removeClass('open');
+        menu.container.removeClass('open');
+        menu.button.text(gettext(msg));
+
+        // @TODO: onClose callback
     }
 
     // Various event handlers. They all return false to stop propagation and
@@ -139,7 +160,7 @@ function () {
     // because we do not want to add an unnecessary clickHandler to the window
     // element.
     function _mouseEnterHandler(event) {
-        this.videoAccessibleMenu.container.addClass('open');
+        _openMenu(this);
 
         return false;
     }
@@ -147,7 +168,7 @@ function () {
     function _mouseLeaveHandler(event) {
         // Only close the menu if no menu item link has focus.
         if (!_menuItemsLinksFocused(this)) {
-            this.videoAccessibleMenu.container.removeClass('open');
+            _closeMenu(this);
         }
                 
         return false;
@@ -187,9 +208,9 @@ function () {
                 // file type.
                 case KEY.ENTER:
                 case KEY.SPACE:
-                    _closeMenu(this);
                     button.focus();
                     this.videoAccessibleMenu.changeFileType.call(this, event);
+                    _closeMenu(this);
                     break;
                 // Close menu and give focus to speed control.
                 case KEY.ESCAPE:
@@ -251,6 +272,19 @@ function () {
                  .on('keydown', 'a.menu-item-link', _keyDownHandler.bind(state));
     }
 
+    function setValue(value) {
+        var menu = this.videoAccessibleMenu,
+            button =  menu.button,
+            menuItems = menu.menuItems;
+
+        menu.value = value;
+        menuItems
+            .removeClass('active')
+            .find("a[data-value='" + value + "']")
+            .parent()
+            .addClass('active');
+    }
+
     // ***************************************************************
     // Public functions start here.
     // These are available via the 'state' object. Their context ('this'
@@ -259,15 +293,11 @@ function () {
     // ***************************************************************
 
     function changeFileType(event) {
-        var fileType = $(event.currentTarget).data('value'),
-            button =  this.videoAccessibleMenu.button,
-            menuItems = this.videoAccessibleMenu.menuItems;
+        var fileType = $(event.currentTarget).data('value');
 
+        this.videoAccessibleMenu.setValue(fileType);
         this.saveState(true, {'transcript_format': fileType});
-        menuItems.removeClass('active');
-        menuItems.find("a[data-value='" + fileType + "']").parent()
-            .addClass('active');
-        button.html('.' + fileType);
+        this.storage.setItem('transcript_format', fileType);
     }
 
 });
