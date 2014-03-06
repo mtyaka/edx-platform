@@ -341,7 +341,7 @@ class VideoModule(VideoFields, XModule):
 
             try:
                 if 'videoId' not in request.GET:
-                    transcript = self.translation(None)
+                    transcript = self.translation()
                 else:
                     transcript = self.translation(request.GET.get('videoId'))
             except (TranscriptException, NotFoundError) as ex:
@@ -392,7 +392,7 @@ class VideoModule(VideoFields, XModule):
 
         return response
 
-    def translation(self, subs_id):
+    def translation(self, subs_id=None):
         """
         This is called to get transcript file for specific language.
 
