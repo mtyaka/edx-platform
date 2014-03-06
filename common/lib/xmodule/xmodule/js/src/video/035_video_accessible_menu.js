@@ -60,17 +60,17 @@ function () {
         // the template HTML. In the future accessible menu plugin, everything
         // inside <div class='menu-container'></div> will be generated in this
         // file.
-        var container = state.el.find('li.video-tracks>div.menu-container'),
-            button = container.children('a.menu-button'),
-            menu = container.children('ol.menu'),
-            menuItems = menu.children('li.menu-item'),
-            menuItemsLinks = menuItems.children('a.menu-item-link'),
+        var container = state.el.find('li.video-tracks>div.a11y-menu-container'),
+            button = container.children('a.a11y-menu-button'),
+            menuList = container.children('ol.a11y-menu-list'),
+            menuItems = menuList.children('li.a11y-menu-item'),
+            menuItemsLinks = menuItems.children('a.a11y-menu-item-link'),
             value = state.videoAccessibleMenu.value;
 
         $.extend(state.videoAccessibleMenu, {
             container: container,
             button: button,
-            menu: menu,
+            menuList: menuList,
             menuItems: menuItems,
             menuItemsLinks: menuItemsLinks
         });
@@ -81,14 +81,16 @@ function () {
     }
 
     function _addAriaAttributes(state) {
-        state.videoAccessibleMenu.button.attr({
+        var menu = state.videoAccessibleMenu;
+
+        menu.button.attr({
             'role': 'button',
             'aria-disabled': 'false'
         });
 
-        state.videoAccessibleMenu.menu.attr('role', 'menu');
+        menu.menuList.attr('role', 'menu');
 
-        state.videoAccessibleMenu.menuItemsLinks.each(function(){
+        menu.menuItemsLinks.each(function(){
             $(this).attr({
                 'role': 'menuitem',
                 'aria-disabled': 'false'
@@ -112,29 +114,26 @@ function () {
         return $(links.eq(index >= links.length - 1 ? 0 : index + 1));
     }
 
-    function _menuItemsLinksFocused(state) {
-        return state.videoAccessibleMenu.menuItemsLinks.is(':focus');
+    function _menuItemsLinksFocused(menu) {
+        return menu.menuItemsLinks.is(':focus');
     }
 
-    function _openMenu(state) {
+    function _openMenu(menu) {
         // When menu items have focus, the menu stays open on
         // mouseleave. A clickHandler is added to the window
         // element to have clicks close the menu when they happen
         // outside of it. We namespace the click event to easily remove it (and
         // only it) in _closeMenu.
-        var menu = state.videoAccessibleMenu;
-
-        $(window).on('click.currentMenu', _clickHandler.bind(state));
+        $(window).on('click.currentMenu', _clickHandler.bind(menu));
         menu.container.addClass('open');
         menu.button.text('...');
 
         // @TODO: onOpen callback
     }
 
-    function _closeMenu(state) {
+    function _closeMenu(menu) {
         // Remove the previously added clickHandler from window element.
-        var menu = state.videoAccessibleMenu,
-            msg = '.' + menu.value;
+        var msg = '.' + menu.value;
 
         $(window).off('click.currentMenu');
         menu.container.removeClass('open');
@@ -148,9 +147,9 @@ function () {
     function _clickHandler(event) {
         var target = $(event.currentTarget);
 
-        this.videoAccessibleMenu.container.removeClass('open');
-        if (target.is('a.menu-item-link')) {
-            this.videoAccessibleMenu.changeFileType.call(this, event);
+        this.container.removeClass('open');
+        if (target.is('a.a11y-menu-item-link')) {
+            this.changeFileType.call(this, event);
         }
 
         return false;
@@ -178,23 +177,21 @@ function () {
         var KEY = $.ui.keyCode,
             keyCode = event.keyCode,
             target = $(event.currentTarget),
-            button = this.videoAccessibleMenu.button,
-            menuItemsLinks = this.videoAccessibleMenu.menuItemsLinks,
             index;
 
-        if (target.is('a.menu-item-link')) {
+        if (target.is('a.a11y-menu-item-link')) {
 
             index = target.parent().index();
 
             switch (keyCode) {
                 // Scroll up menu, wrapping at the top. Keep menu open.
                 case KEY.UP:
-                    _previousMenuItemLink(menuItemsLinks, index).focus();
+                    _previousMenuItemLink(this.menuItemsLinks, index).focus();
                     break;
                 // Scroll down  menu, wrapping at the bottom. Keep menu
                 // open.
                 case KEY.DOWN:
-                    _nextMenuItemLink(menuItemsLinks, index).focus();
+                    _nextMenuItemLink(this.menuItemsLinks, index).focus();
                     break;
                 // Close menu.
                 case KEY.TAB:
@@ -208,14 +205,14 @@ function () {
                 // file type.
                 case KEY.ENTER:
                 case KEY.SPACE:
-                    button.focus();
-                    this.videoAccessibleMenu.changeFileType.call(this, event);
+                    this.button.focus();
+                    // changeFileType.call(this, event);
                     _closeMenu(this);
                     break;
                 // Close menu and give focus to speed control.
                 case KEY.ESCAPE:
                     _closeMenu(this);
-                    button.focus();
+                    this.button.focus();
                     break;
             }
             return false;
@@ -227,7 +224,7 @@ function () {
                 case KEY.SPACE:
                 case KEY.UP:
                     _openMenu(this);
-                    menuItemsLinks.last().focus();
+                    this.menuItemsLinks.last().focus();
                     break;
                 // Close menu.
                 case KEY.ESCAPE:
@@ -256,29 +253,27 @@ function () {
      * @returns {undefined}
      */
     function _bindHandlers(state) {
-        var container = state.videoAccessibleMenu.container,
-            menuItems = state.videoAccessibleMenu.menuItems;
+        var menu = state.videoAccessibleMenu;
 
         // Attach various events handlers to menu container.
-        container.on({
-            'mouseenter': _mouseEnterHandler.bind(state),
-            'mouseleave': _mouseLeaveHandler.bind(state),
-            'click': _clickHandler.bind(state),
-            'keydown': _keyDownHandler.bind(state)
+        menu.container.on({
+            'mouseenter': _mouseEnterHandler.bind(menu),
+            'mouseleave': _mouseLeaveHandler.bind(menu),
+            'click': _clickHandler.bind(menu),
+            'keydown': _keyDownHandler.bind(menu)
         });
 
         // Attach click and keydown event handlers to individual menu items.
-        menuItems.on('click', 'a.menu-item-link', _clickHandler.bind(state))
-                 .on('keydown', 'a.menu-item-link', _keyDownHandler.bind(state));
+        menu.menuItems
+            .on('click', 'a.a11y.menu-item-link', _clickHandler.bind(menu))
+            .on('keydown', 'a.a11y-menu-item-link', _keyDownHandler.bind(menu));
     }
 
     function setValue(value) {
-        var menu = this.videoAccessibleMenu,
-            button =  menu.button,
-            menuItems = menu.menuItems;
+        var menu = this.videoAccessibleMenu;
 
         menu.value = value;
-        menuItems
+        menu.menuItems
             .removeClass('active')
             .find("a[data-value='" + value + "']")
             .parent()

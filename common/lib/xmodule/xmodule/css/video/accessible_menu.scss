@@ -12,16 +12,16 @@ $blue-s1: saturate($blue,15%);
   speak: none;
 }
 
-.menu-container {
+.a11y-menu-container {
   position: relative;
 
   &.open {
-    .menu {
+    .a11y-menu-list {
       display: block;
     }
   }
 
-  .menu {
+  .a11y-menu-list {
     top: 100%;
     margin: 0;
     padding: 0;
@@ -70,7 +70,7 @@ $blue-s1: saturate($blue,15%);
 // Video track button specific styles
 
 .video-tracks {
-  .menu-container {
+  .a11y-menu-container {
     display: inline-block;
     vertical-align: top;
     border-left: 1px solid #eee;
@@ -111,7 +111,7 @@ $blue-s1: saturate($blue,15%);
       }
     }
 
-    .menu {
+    .a11y-menu-list {
       right: 0;
 
       li {

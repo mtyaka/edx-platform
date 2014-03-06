@@ -114,16 +114,16 @@
         <li class="video-tracks">
             ${('<a href="%s">' + _('Download transcript') + '</a>') % track
             }
-            <div class="menu-container">
-                <a class="menu-button" href="#" title="${'.' + transcript_format}">${'.' + transcript_format}</a>
-                <ol class="menu">
+            <div class="a11y-menu-container">
+                <a class="a11y-menu-button" href="#" title="${'.' + transcript_format}">${'.' + transcript_format}</a>
+                <ol class="a11y-menu-list">
                 % for key, value in transcript_formats_list.items():
                   % if value == transcript_format:
-                  <li class="menu-item active">
+                  <li class="a11y-menu-item active">
                   % else:
-                  <li class="menu-item">
+                  <li class="a11y-menu-item">
                   % endif
-                      <a class="menu-item-link" href="#${value}" title="${_('{file_format}'.format(file_format=key))}" data-value="${value}">
+                      <a class="a11y-menu-item-link" href="#${value}" title="${_('{file_format}'.format(file_format=key))}" data-value="${value}">
                         ${_('{file_format}'.format(file_format=key))}
                       </a>
                   </li>

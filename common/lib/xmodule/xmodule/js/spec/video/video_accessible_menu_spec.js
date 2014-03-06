@@ -15,11 +15,11 @@
                 beforeEach(function () {
                     state = jasmine.initializePlayer();
                     videoTracks = $('li.video-tracks'),
-                    container = videoTracks.children('div.menu-container'),
-                    button = container.children('a.menu-button'),
-                    menu = container.children('ol.menu'),
-                    menuItems = menu.children('li.menu-item'),
-                    menuItemsLinks = menuItems.children('a.menu-item-link');
+                    container = videoTracks.children('div.a11y-menu-container'),
+                    button = container.children('a.a11y-menu-button'),
+                    menuList = container.children('ol.a11y-menu-list'),
+                    menuItems = menuList.children('li.a11y-menu-item'),
+                    menuItemsLinks = menuItems.children('a.a11y-menu-item-link');
                 });
 
                 it('add the accessible menu', function () {
@@ -27,9 +27,9 @@
                     // Make sure we have the expected HTML structure:
                     // Menu container exists
                     expect(container.length).toBe(1);
-                    // Only one button and one menu per menu container.
+                    // Only one button and one menu list per menu container.
                     expect(button.length).toBe(1);
-                    expect(menu.length).toBe(1);
+                    expect(menuList.length).toBe(1);
                     // At least one menu item and one menu link per menu
                     // container. Exact length test?
                     expect(menuItems.length).toBeGreaterThan(0);
@@ -39,10 +39,10 @@
                     activeMenuItem = menuItems.filter('.active');
                     expect(activeMenuItem.length).toBe(1);
 
-                    expect(activeMenuItem.children('a.menu-item-link'))
+                    expect(activeMenuItem.children('a.a11y-menu-item-link'))
                         .toHaveData('value', 'srt');
 
-                    expect(activeMenuItem.children('a.menu-item-link'))
+                    expect(activeMenuItem.children('a.a11y-menu-item-link'))
                         .toHaveHtml('SubRip (.srt) file');
 
                     /* TO DO: Check that all the anchors contain correct text.
@@ -65,7 +65,7 @@
                         'aria-disabled': 'false'
                     });
 
-                    expect(menu).toHaveAttr('role', 'menu');
+                    expect(menuList).toHaveAttr('role', 'menu');
 
                     menuItemsLinks.each(function(){
                         expect($(this)).toHaveAttrs({
@@ -113,11 +113,11 @@
                 beforeEach(function () {
                     state = jasmine.initializePlayer();
                     videoTracks = $('li.video-tracks'),
-                    container = videoTracks.children('div.menu-container'),
-                    button = container.children('a.menu-button'),
-                    menu = container.children('ol.menu'),
-                    menuItems = menu.children('li.menu-item'),
-                    menuItemsLinks = menuItems.children('a.menu-item-link');
+                    container = videoTracks.children('div.a11y-menu-container'),
+                    button = container.children('a.a11y-menu-button'),
+                    menuList = container.children('ol.a11y-menu-list'),
+                    menuItems = menuList.children('li.a11y-menu-item'),
+                    menuItemsLinks = menuItems.children('a.a11y-menu-item-link');
                     spyOn($.fn, 'focus').andCallThrough();
                 });
 

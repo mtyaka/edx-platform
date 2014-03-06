@@ -319,6 +319,17 @@ div.video {
 
         .menu-container {
           float: left;
+          position: relative;
+
+          &.open {
+            .menu {
+              display: block;
+              opacity: 1;
+              padding: 0;
+              margin: 0;
+              list-style: none;
+            }
+          }
 
           .menu {
             @include transition(none);
@@ -326,7 +337,10 @@ div.video {
             background-color: #444;
             border: 1px solid #000;
             bottom: 46px;
-            top: auto;
+            display: none;
+            opacity: 0;
+            position: absolute;
+            z-index: 10;
 
             li {
               box-shadow:  0 1px 0 #555;
