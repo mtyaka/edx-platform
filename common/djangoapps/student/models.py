@@ -392,26 +392,26 @@ class PasswordHistory(models.Model):
         return False
 
     @classmethod
-    def validate_password_reset_frequency(cls, user):
+    def is_password_reset_too_soon(cls, user):
         """
         Asserts that the password is not getting reset too frequently
         """
         if not cls.is_password_reset_frequency_restricted():
-            return True
+            return False
 
         history = PasswordHistory.objects.filter(user=user).order_by('-time_set')
 
         if len(history) == 0:
-            return True
+            return False
 
         now = timezone.now()
 
         delta = now - history[0].time_set
 
-        return delta.days >= settings.ADVANCED_SECURITY_CONFIG['MIN_TIME_IN_DAYS_BETWEEN_ALLOWED_RESETS']
+        return delta.days < settings.ADVANCED_SECURITY_CONFIG['MIN_TIME_IN_DAYS_BETWEEN_ALLOWED_RESETS']
 
     @classmethod
-    def validate_password_reuse(cls, user, new_password):
+    def is_allowable_password_reuse(cls, user, new_password):
         """
         Asserts that the password adheres to the reuse policies
         """
@@ -434,15 +434,23 @@ class PasswordHistory(models.Model):
             # NOTE, how the salt is serialized in the password field is dependent on the algorithm
             # in pbkdf2_sha256 [LMS] it's the 3rd element, in sha1 [unit tests] it's the 2nd element
             hash_elements = entry.password.split('$')
-            if hash_elements[0] == 'pbkdf2_sha256':
+            algorithm = hash_elements[0]
+            if algorithm == 'pbkdf2_sha256':
                 hashed_password = make_password(new_password, hash_elements[2])
-            else:
+            elif algorithm == 'sha1':
                 hashed_password = make_password(new_password, hash_elements[1])
+            else:
+                # This means we got something unexpected. We don't want to throw an exception, but
+                # log as an error and basically allow any password reuse
+                AUDIT_LOG.error('Unknown password hashing algorithm "{0}" found in existing password hash, password reuse policy will not be enforced!!!'.format(algorithm))
+                return True
 
             if entry.password != hashed_password:
                 reuse_distance = reuse_distance + 1
+                if reuse_distance >= min_diff_passwords_required:
+                    break
             else:
-                # found a reuse of passwords, was it far enough in the past?!?
+                # found a reuse of the supplied password, was it far enough in the past?!?
                 return reuse_distance >= min_diff_passwords_required
 
         return True

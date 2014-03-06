@@ -32,7 +32,7 @@ from textwrap import dedent
 
 from student.models import anonymous_id_for_user, user_by_anonymous_id, CourseEnrollment, unique_id_for_user
 from student.views import (process_survey_link, _cert_info, password_reset, password_reset_confirm_wrapper,
-                           change_enrollment, complete_course_mode_info, token, course_from_id)
+                           change_enrollment, complete_course_mode_info, token)
 from student.tests.factories import UserFactory, CourseModeFactory
 from student.tests.test_email import mock_render_to_string
 

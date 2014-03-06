@@ -11,6 +11,8 @@ from student.models import PasswordHistory
 from freezegun import freeze_time
 from datetime import timedelta
 
+from django.test.utils import override_settings
+
 
 @patch.dict("django.conf.settings.FEATURES", {'ADVANCED_SECURITY': True})
 class TestPasswordHistory(TestCase):
@@ -27,7 +29,7 @@ class TestPasswordHistory(TestCase):
         history = PasswordHistory()
         history.create(user)
 
-    def _user_factory_with_history(self, is_staff=False):
+    def _user_factory_with_history(self, is_staff=False, set_initial_history=True):
         """
         Helper method to generate either an Admin or a User
         """
@@ -35,8 +37,13 @@ class TestPasswordHistory(TestCase):
             user = AdminFactory()
         else:
             user = UserFactory()
-        history = PasswordHistory()
-        history.create(user)
+
+        user.date_joined = timezone.now()
+
+        if set_initial_history:
+            history = PasswordHistory()
+            history.create(user)
+
         return user
 
     @patch.dict("django.conf.settings.FEATURES", {'ADVANCED_SECURITY': False})
@@ -48,8 +55,8 @@ class TestPasswordHistory(TestCase):
         staff = AdminFactory()
 
         # if feature is disabled user can keep reusing same password
-        self.assertTrue(PasswordHistory.validate_password_reuse(user, "test"))
-        self.assertTrue(PasswordHistory.validate_password_reuse(staff, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(user, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "test"))
 
         self.assertFalse(PasswordHistory.should_user_reset_password_now(user))
         self.assertFalse(PasswordHistory.should_user_reset_password_now(staff))
@@ -64,23 +71,52 @@ class TestPasswordHistory(TestCase):
         staff = self._user_factory_with_history(is_staff=True)
 
         # students need to user at least one different passwords before reuse
-        self.assertFalse(PasswordHistory.validate_password_reuse(user, "test"))
-        self.assertTrue(PasswordHistory.validate_password_reuse(user, "different"))
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(user, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(user, "different"))
         self._change_password(user, "different")
 
-        self.assertTrue(PasswordHistory.validate_password_reuse(user, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(user, "test"))
 
         # staff needs to use at least two different passwords before reuse
-        self.assertFalse(PasswordHistory.validate_password_reuse(staff, "test"))
-        self.assertTrue(PasswordHistory.validate_password_reuse(staff, "different"))
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(staff, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "different"))
         self._change_password(staff, "different")
 
-        self.assertFalse(PasswordHistory.validate_password_reuse(staff, "test"))
-        self.assertFalse(PasswordHistory.validate_password_reuse(staff, "different"))
-        self.assertTrue(PasswordHistory.validate_password_reuse(staff, "third"))
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(staff, "test"))
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(staff, "different"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "third"))
         self._change_password(staff, "third")
 
-        self.assertTrue(PasswordHistory.validate_password_reuse(staff, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "test"))
+
+    @override_settings(PASSWORD_HASHERS = ('django.contrib.auth.hashers.PBKDF2PasswordHasher'))
+    @patch.dict("django.conf.settings.ADVANCED_SECURITY_CONFIG", {'MIN_DIFFERENT_STAFF_PASSWORDS_BEFORE_REUSE': 2})
+    @patch.dict("django.conf.settings.ADVANCED_SECURITY_CONFIG", {'MIN_DIFFERENT_STUDENT_PASSWORDS_BEFORE_REUSE': 1})
+    def test_pbkdf2_sha256_password_reuse(self):
+        """
+        Assert against the password reuse policy but using the normal Django PBKDF2
+        """
+        user = self._user_factory_with_history()
+        staff = self._user_factory_with_history(is_staff=True)
+
+        # students need to user at least one different passwords before reuse
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(user, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(user, "different"))
+        self._change_password(user, "different")
+
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(user, "test"))
+
+        # staff needs to use at least two different passwords before reuse
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(staff, "test"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "different"))
+        self._change_password(staff, "different")
+
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(staff, "test"))
+        self.assertFalse(PasswordHistory.is_allowable_password_reuse(staff, "different"))
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "third"))
+        self._change_password(staff, "third")
+
+        self.assertTrue(PasswordHistory.is_allowable_password_reuse(staff, "test"))
 
     @patch.dict("django.conf.settings.ADVANCED_SECURITY_CONFIG", {'MIN_DAYS_FOR_STAFF_ACCOUNTS_PASSWORD_RESETS': 1})
     @patch.dict("django.conf.settings.ADVANCED_SECURITY_CONFIG", {'MIN_DAYS_FOR_STUDENT_ACCOUNTS_PASSWORD_RESETS': 5})
@@ -90,10 +126,7 @@ class TestPasswordHistory(TestCase):
         """
         student = self._user_factory_with_history()
         staff = self._user_factory_with_history(is_staff=True)
-
-        # also create a user who doesn't have any history
-        grandfathered_student = UserFactory()
-        grandfathered_student.date_joined = timezone.now()
+        grandfathered_student = self._user_factory_with_history(set_initial_history=False)
 
         self.assertFalse(PasswordHistory.should_user_reset_password_now(student))
         self.assertFalse(PasswordHistory.should_user_reset_password_now(staff))
@@ -153,12 +186,14 @@ class TestPasswordHistory(TestCase):
         Assert that a user should not be able to password reset too frequently
         """
         student = self._user_factory_with_history()
+        grandfathered_student = self._user_factory_with_history(set_initial_history=False)
 
-        self.assertFalse(PasswordHistory.validate_password_reset_frequency(student))
+        self.assertTrue(PasswordHistory.is_password_reset_too_soon(student))
+        self.assertFalse(PasswordHistory.is_password_reset_too_soon(grandfathered_student))
 
         staff_reset_time = timezone.now() + timedelta(days=100)
         with freeze_time(staff_reset_time):
-            self.assertTrue(PasswordHistory.validate_password_reset_frequency(student))
+            self.assertFalse(PasswordHistory.is_password_reset_too_soon(student))
 
     @patch.dict("django.conf.settings.ADVANCED_SECURITY_CONFIG", {'MIN_TIME_IN_DAYS_BETWEEN_ALLOWED_RESETS': None})
     def test_disabled_too_frequent_password_resets(self):
@@ -167,4 +202,4 @@ class TestPasswordHistory(TestCase):
         """
         student = self._user_factory_with_history()
 
-        self.assertTrue(PasswordHistory.validate_password_reset_frequency(student))
+        self.assertFalse(PasswordHistory.is_password_reset_too_soon(student))

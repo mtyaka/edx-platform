@@ -749,7 +749,7 @@ def login_user(request, error=""):
         return JsonResponse({
             "success": False,
             "value": _('Your password has expired due to password policy on this account. You must reset your password before you can log in again. Please click the "Forgot Password" link on this page to reset your password before logging in again.'),
-        })  # TODO: this should be status code 429  # pylint: disable=fixme
+        })  # TODO: this should be status code 403  # pylint: disable=fixme
 
     # if the user doesn't exist, we want to set the username to an invalid
     # username so that authentication is guaranteed to fail and we can take
@@ -1435,17 +1435,17 @@ def password_reset_confirm_wrapper(
                 err_msg = _('Password: ') + '; '.join(err.messages)
 
         # also, check the password reuse policy
-        if not err_msg and not PasswordHistory.validate_password_reuse(user, password):
+        if PasswordHistory.is_allowable_password_reuse(user, password):
             if user.is_staff:
                 num_distinct = settings.ADVANCED_SECURITY_CONFIG['MIN_DIFFERENT_STAFF_PASSWORDS_BEFORE_REUSE']
             else:
                 num_distinct = settings.ADVANCED_SECURITY_CONFIG['MIN_DIFFERENT_STUDENT_PASSWORDS_BEFORE_REUSE']
-            err_msg = _("You are re-using a password that you have used recently. You must have {0} distinct password(s) before reusing a previous password.".format(num_distinct))
+            err_msg = _("You are re-using a password that you have used recently. You must have {0} distinct password(s) before reusing a previous password.").format(num_distinct)
 
         # also, check to see if passwords are getting reset too frequent
-        if not err_msg and not PasswordHistory.validate_password_reset_frequency(user):
+        if PasswordHistory.is_password_reset_too_soon(user):
             num_days = settings.ADVANCED_SECURITY_CONFIG['MIN_TIME_IN_DAYS_BETWEEN_ALLOWED_RESETS']
-            err_msg = _("You are resetting passwords too frequently. Due to security policies, {0} day(s) must elapse between password resets".format(num_days))
+            err_msg = _("You are resetting passwords too frequently. Due to security policies, {0} day(s) must elapse between password resets").format(num_days)
 
     if err_msg:
         # We have an password reset attempt which violates some security policy, use the
