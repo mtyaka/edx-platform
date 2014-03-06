@@ -411,7 +411,7 @@ class VideoModule(VideoFields, XModule):
             If english -> give back `sub` subtitles:
                 Return what we have in contentstore for given subs_if that is stored in self.sub.
             If non-english:
-                a) try to find previously generated sjson or try to generate new transcripts.
+                a) try to find previously generated sjson.
                 b) otherwise generate sjson from srt and return it.
 
         Filenames naming:
