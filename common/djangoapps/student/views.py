@@ -1435,7 +1435,7 @@ def password_reset_confirm_wrapper(
                 err_msg = _('Password: ') + '; '.join(err.messages)
 
         # also, check the password reuse policy
-        if PasswordHistory.is_allowable_password_reuse(user, password):
+        if not PasswordHistory.is_allowable_password_reuse(user, password):
             if user.is_staff:
                 num_distinct = settings.ADVANCED_SECURITY_CONFIG['MIN_DIFFERENT_STAFF_PASSWORDS_BEFORE_REUSE']
             else:
