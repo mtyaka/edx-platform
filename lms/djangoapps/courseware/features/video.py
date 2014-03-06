@@ -381,7 +381,6 @@ def select_transcript_format(_step, format):
             break
 
     assert world.css_find(menu_selector + ' .active a')[0]['data-value'] == format
-    button.mouse_out()
     assert button.text.strip() == '.' + format
 
 

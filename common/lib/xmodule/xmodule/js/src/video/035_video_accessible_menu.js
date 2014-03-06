@@ -158,12 +158,20 @@ function () {
         return false;
     }
 
+    function _toggleMenuHandler(event) {
+        this.container.hasClass('open') ? _closeMenu(this, true)
+                                        : _openMenu(this, true);
+
+        return false;
+    }
+
     // Various event handlers. They all return false to stop propagation and
     // prevent default behavior.
     function _clickHandler(event) {
         var target = $(event.currentTarget);
 
         this.changeFileType.call(this, event);
+        _closeMenu(this, true);
 
         return false;
     }
@@ -254,7 +262,7 @@ function () {
         menu.container.on({
             'mouseenter': _openMenuHandler.bind(menu),
             'mouseleave': _closeMenuHandler.bind(menu),
-            'click': _openMenuHandler.bind(menu),
+            'click': _toggleMenuHandler.bind(menu),
             'keydown': _keyDownHandler.bind(menu)
         });
 
