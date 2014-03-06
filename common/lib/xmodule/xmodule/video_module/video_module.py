@@ -340,10 +340,7 @@ class VideoModule(VideoFields, XModule):
                 self.transcript_language = lang
 
             try:
-                if 'videoId' not in request.GET:
-                    transcript = self.translation()
-                else:
-                    transcript = self.translation(request.GET.get('videoId'))
+                transcript = self.translation(request.GET.get('videoId', None))
             except (TranscriptException, NotFoundError) as ex:
                 log.info(ex.message)
                 response = Response(status=404)
@@ -392,30 +389,30 @@ class VideoModule(VideoFields, XModule):
 
         return response
 
-    def translation(self, subs_id=None):
+    def translation(self, youtube_id):
         """
         This is called to get transcript file for specific language.
 
-        subs_id: str: must be one of: self.sub or one of youtube_ids.
+        youtube_id: str: must be one of youtube_ids.
 
         Logic flow:
 
+        If youtube_id doesn't exist, we have a video in HTML5 mode. Otherwise,
+        video video in Youtube or Flash modes.
+
         if youtube:
-            If english -> give back `sub` subtitles:
-                Return what we have in contentstore for given subs_id,
-                We should not regenerate needed transcripts, if, for example, they present for youtube 1.0 speed,
-                and we need for other speeds. Such generation should be done in transcripts workflow.
+            If english -> give back youtube_id subtitles:
+                Return what we have in contentstore for given youtube_id.
             If non-english:
-                a) extract subs_id from srt file name
-                b) try to find sjson by subs_id and return if sucessful
-                c) generate sjson from srt for all youtube speeds
+                a) extract youtube_id from srt file name.
+                b) try to find sjson by youtube_id and return if successful.
+                c) generate sjson from srt for all youtube speeds.
         if non-youtube:
             If english -> give back `sub` subtitles:
                 Return what we have in contentstore for given subs_if that is stored in self.sub.
             If non-english:
-                a) extract subs_id from srt file name
-                b) try to find sjson by subs_id and return if sucessful
-                c) otherwise generate sjson from srt and return it.
+                a) try to find previously generated sjson or try to generate new transcripts.
+                b) otherwise generate sjson from srt and return it.
 
         Filenames naming:
             en: subs_videoid.srt.sjson
@@ -425,32 +422,31 @@ class VideoModule(VideoFields, XModule):
             NotFoundError if for 'en' subtitles no asset is uploaded.
         """
 
-        if subs_id:
+        if youtube_id:
             # Youtube case:
             if self.transcript_language == 'en':
-                return asset(self.location, subs_id).data
+                return asset(self.location, youtube_id).data
 
             youtube_ids = youtube_speed_dict(self)
-            assert subs_id in youtube_ids
+            assert youtube_id in youtube_ids
 
             try:
-                sjson_transcript = asset(self.location, subs_id, self.transcript_language).data
+                sjson_transcript = asset(self.location, youtube_id, self.transcript_language).data
             except (NotFoundError):
-                log.info("Can't find content in storage for %s transcript: generating.", subs_id)
+                log.info("Can't find content in storage for %s transcript: generating.", youtube_id)
                 generate_sjson_for_all_speeds(
                     self,
                     self.transcripts[self.transcript_language],
-                    {speed: subs_id for subs_id, speed in youtube_ids.iteritems()},
+                    {speed: youtube_id for youtube_id, speed in youtube_ids.iteritems()},
                     self.transcript_language
                 )
-            sjson_transcript = asset(self.location, subs_id, self.transcript_language).data
+            sjson_transcript = asset(self.location, youtube_id, self.transcript_language).data
             return sjson_transcript
         else:
             # HTML5 case
             if self.transcript_language == 'en':
                 return asset(self.location, self.sub).data
-
-            if not self.youtube_id_1_0:  # Non-youtube (HTML5) case:
+            else:
                 return get_or_create_sjson(self)
 
 
