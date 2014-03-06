@@ -400,18 +400,22 @@ class VideoModule(VideoFields, XModule):
 
         Logic flow:
 
-        If english -> give back `sub` subtitles:
-            Return what we have in contentstore for given subs_id,
-            We should not regenerate needed transcripts, if, for example, they present for youtube 1.0 speed,
-            and we need for other speeds. Such generation should be done in transcripts workflow.
-        If non-english:
-            a) extract subs_id from srt file name
-            if non-youtube:
-                b) try to find sjson by subs_id and return if sucessful
-                c) otherwise generate sjson from srt and return it.
-            if youtube:
+        if youtube:
+            If english -> give back `sub` subtitles:
+                Return what we have in contentstore for given subs_id,
+                We should not regenerate needed transcripts, if, for example, they present for youtube 1.0 speed,
+                and we need for other speeds. Such generation should be done in transcripts workflow.
+            If non-english:
+                a) extract subs_id from srt file name
                 b) try to find sjson by subs_id and return if sucessful
                 c) generate sjson from srt for all youtube speeds
+        if non-youtube:
+            If english -> give back `sub` subtitles:
+                Return what we have in contentstore for given subs_if that is stored in self.sub.
+            If non-english:
+                a) extract subs_id from srt file name
+                b) try to find sjson by subs_id and return if sucessful
+                c) otherwise generate sjson from srt and return it.
 
         Filenames naming:
             en: subs_videoid.srt.sjson
@@ -422,11 +426,10 @@ class VideoModule(VideoFields, XModule):
         """
 
         if subs_id:
-            # youtube case
+            # Youtube case:
             if self.transcript_language == 'en':
                 return asset(self.location, subs_id).data
 
-            # Youtube case:
             youtube_ids = youtube_speed_dict(self)
             assert subs_id in youtube_ids
 
