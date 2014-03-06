@@ -447,11 +447,11 @@ class PasswordHistory(models.Model):
 
             if entry.password != hashed_password:
                 reuse_distance = reuse_distance + 1
+                # did we reach the minimum amount of intermediate different passwords?
                 if reuse_distance >= min_diff_passwords_required:
                     break
             else:
-                # found a reuse of the supplied password, was it far enough in the past?!?
-                return reuse_distance >= min_diff_passwords_required
+                return False
 
         return True
 
