@@ -45,6 +45,8 @@ $blue-s1: saturate($blue,15%);
         text-overflow: ellipsis;
         white-space: nowrap;
         color: $gray-l2;
+        font-size: 14px;
+        line-height: 23px;
 
         &:hover {
           color: $gray-d1;

@@ -38,11 +38,53 @@ VIDEO_BUTTONS = {
 VIDEO_MENUS = {
     'language': '.lang .menu',
     'speed': '.speed .menu',
-    'download_transcript': '.video-tracks .menu',
+    'download_transcript': '.video-tracks .a11y-menu-list',
 }
 
 coursenum = 'test_course'
 sequence = {}
+
+
+class ReuqestHandlerWithSessionId(object):
+    def get(self, url):
+        """
+        Sends a request.
+        """
+        kwargs = dict()
+
+        session_id = [{i['name']:i['value']} for i in  world.browser.cookies.all() if i['name']==u'sessionid']
+        if session_id:
+            kwargs.update({
+                'cookies': session_id[0]
+            })
+
+        response = requests.get(url, **kwargs)
+
+        # response = requests.get(url, **kwargs)
+        self.response = response
+        self.status_code = response.status_code
+        self.headers = response.headers
+        self.content = response.content
+
+        return self
+
+    def is_success(self):
+        """
+        Returns `True` if the response was succeed, otherwise, returns `False`.
+        """
+        if self.status_code < 400:
+            return True
+        return False
+
+    def check_header(self, name, value):
+        """
+        Returns `True` if the response header exist and has appropriate value,
+        otherwise, returns `False`.
+        """
+        if value in self.headers.get(name, ''):
+            return True
+        return False
+
 
 @step('when I view the (.*) it does not have autoplay enabled$')
 def does_not_autoplay(_step, video_type):
@@ -317,8 +359,7 @@ def i_can_download_transcript(_step, format):
     }
 
     url = world.css_find(VIDEO_BUTTONS['download_transcript'])[0]['href']
-    request = RequestHandler()
-
+    request = ReuqestHandlerWithSessionId()
     assert request.get(url).is_success()
     assert request.check_header('content-type', formats[format]['mime_type'])
     assert request.content.startswith(formats[format]['content'])
@@ -326,8 +367,7 @@ def i_can_download_transcript(_step, format):
 
 @step('I select the transcript format "([^"]*)"$')
 def select_transcript_format(_step, format):
-    button = world.css_find('.video-tracks .menu-container > a').first
-    # _open_menu('download_transcript')
+    button = world.css_find('.video-tracks .a11y-menu-button').first
     button.mouse_over()
     assert button.text.strip() == '...'
 
@@ -340,7 +380,8 @@ def select_transcript_format(_step, format):
             world.wait_for_ajax_complete()
             break
 
-    world.css_find(menu_selector + ' .active a')[0]['data-value'] == format
+    assert world.css_find(menu_selector + ' .active a')[0]['data-value'] == format
+    button.mouse_out()
     assert button.text.strip() == '.' + format
 
 
@@ -348,39 +389,3 @@ def _open_menu(menu):
     world.browser.execute_script("$('{selector}').parent().addClass('open')".format(
         selector=VIDEO_MENUS[menu]
     ))
-
-
-class RequestHandler(object):
-    def get(self, url):
-        """
-        Sends a request.
-        """
-        session_id_cookie = ({i['name']:i['value']} for i in  world.browser.cookies.all() if i['name']==u'sessionid').next()
-        response = requests.get(url, cookies=session_id_cookie)
-        self.response = response
-        self.status_code = response.status_code
-        self.headers = response.headers
-        self.content = response.content
-
-        return self
-
-    def is_success(self):
-        """
-        Returns `True` if the response was succeed, otherwise, returns `False`.
-        """
-        if self.status_code < 400:
-            return True
-        return False
-
-    def check_header(self, name, value):
-        """
-        Returns `True` if the response header exist and has appropriate value,
-        otherwise, returns `False`.
-        """
-        try:
-            if value in self.headers[name]:
-                return True
-        except Exception:
-            pass
-
-        return False

@@ -65,7 +65,9 @@ function () {
             menuList = container.children('ol.a11y-menu-list'),
             menuItems = menuList.children('li.a11y-menu-item'),
             menuItemsLinks = menuItems.children('a.a11y-menu-item-link'),
-            value = state.videoAccessibleMenu.value;
+            value = (function (val, activeElement) {
+                return val || activeElement.find('a').data('value') || 'srt';
+            }(state.videoAccessibleMenu.value, menuItems.filter('.active')));
 
         $.extend(state.videoAccessibleMenu, {
             container: container,
@@ -76,7 +78,7 @@ function () {
         });
 
         if (value) {
-            state.setValue(value);
+            state.videoAccessibleMenu.setValue(value);
         }
     }
 
@@ -98,11 +100,6 @@ function () {
         });
     }
 
-    // Hide accessible menu.
-    function _hideAccessibleMenu(state) {
-        state.videoAccessibleMenu.container.hide();
-    }
-
     // Get previous element in array or cyles back to the last if it is the
     // first.
     function _previousMenuItemLink(links, index) {
@@ -118,28 +115,47 @@ function () {
         return menu.menuItemsLinks.is(':focus');
     }
 
-    function _openMenu(menu) {
+    function _openMenu(menu, without_handler) {
         // When menu items have focus, the menu stays open on
-        // mouseleave. A clickHandler is added to the window
+        // mouseleave. A _closeMenuHandler is added to the window
         // element to have clicks close the menu when they happen
         // outside of it. We namespace the click event to easily remove it (and
         // only it) in _closeMenu.
-        $(window).on('click.currentMenu', _clickHandler.bind(menu));
         menu.container.addClass('open');
         menu.button.text('...');
+        if (!without_handler) {
+            $(window).on('click.currentMenu', _closeMenuHandler.bind(menu));
+        }
 
         // @TODO: onOpen callback
     }
 
-    function _closeMenu(menu) {
+    function _closeMenu(menu, without_handler) {
         // Remove the previously added clickHandler from window element.
         var msg = '.' + menu.value;
 
-        $(window).off('click.currentMenu');
         menu.container.removeClass('open');
         menu.button.text(gettext(msg));
+        if (!without_handler) {
+            $(window).off('click.currentMenu');
+        }
 
         // @TODO: onClose callback
+    }
+
+    function _openMenuHandler(event) {
+        _openMenu(this, true);
+
+        return false;
+    }
+
+    function _closeMenuHandler(event) {
+        // Only close the menu if no menu item link has focus or `click` event.
+        if (!_menuItemsLinksFocused(this) || event.type == 'click') {
+            _closeMenu(this, true);
+        }
+
+        return false;
     }
 
     // Various event handlers. They all return false to stop propagation and
@@ -147,29 +163,8 @@ function () {
     function _clickHandler(event) {
         var target = $(event.currentTarget);
 
-        this.container.removeClass('open');
-        if (target.is('a.a11y-menu-item-link')) {
-            this.changeFileType.call(this, event);
-        }
+        this.changeFileType.call(this, event);
 
-        return false;
-    }
-
-    // We do not use _openMenu and _closeMenu in the following two handlers
-    // because we do not want to add an unnecessary clickHandler to the window
-    // element.
-    function _mouseEnterHandler(event) {
-        _openMenu(this);
-
-        return false;
-    }
-
-    function _mouseLeaveHandler(event) {
-        // Only close the menu if no menu item link has focus.
-        if (!_menuItemsLinksFocused(this)) {
-            _closeMenu(this);
-        }
-                
         return false;
     }
 
@@ -206,7 +201,7 @@ function () {
                 case KEY.ENTER:
                 case KEY.SPACE:
                     this.button.focus();
-                    // changeFileType.call(this, event);
+                    this.changeFileType.call(this, event);
                     _closeMenu(this);
                     break;
                 // Close menu and give focus to speed control.
@@ -257,15 +252,15 @@ function () {
 
         // Attach various events handlers to menu container.
         menu.container.on({
-            'mouseenter': _mouseEnterHandler.bind(menu),
-            'mouseleave': _mouseLeaveHandler.bind(menu),
-            'click': _clickHandler.bind(menu),
+            'mouseenter': _openMenuHandler.bind(menu),
+            'mouseleave': _closeMenuHandler.bind(menu),
+            'click': _openMenuHandler.bind(menu),
             'keydown': _keyDownHandler.bind(menu)
         });
 
         // Attach click and keydown event handlers to individual menu items.
         menu.menuItems
-            .on('click', 'a.a11y.menu-item-link', _clickHandler.bind(menu))
+            .on('click', 'a.a11y-menu-item-link', _clickHandler.bind(menu))
             .on('keydown', 'a.a11y-menu-item-link', _keyDownHandler.bind(menu));
     }
 
