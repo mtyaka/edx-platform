@@ -85,7 +85,7 @@ function () {
             'title': gettext('Video slider')
         });
 
-        // state.updateControlsHeight();
+        state.videoControl.updateControlsHeight();
     }
 
     // function _bindHandlers(state)
@@ -100,7 +100,7 @@ function () {
             if (isFullScreen) {
                 state.resizer
                     .delta
-                    .minus(height, 'height')
+                    .substract(height, 'height')
                     .setMode('both');
 
             } else {

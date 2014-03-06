@@ -171,14 +171,14 @@ function () {
             }
         };
 
-        var cleanDelta = function (side) {
+        var cleanDelta = function () {
             delta['height'] = 0;
             delta['width'] = 0;
 
             return module;
         };
 
-        var addDelta = function (value, side) {
+        var plusDelta = function (value, side) {
             if (_.isNumber(value) && _.isNumber(delta[side])) {
                 delta[side] += value;
             }
@@ -186,9 +186,10 @@ function () {
             return module;
         };
 
-        var minusDelta = function (value, side) {
-            value = -1 * value;
-            addDelta(value, side);
+        var substractDelta = function (value, side) {
+            if (_.isNumber(value) && _.isNumber(delta[side])) {
+                delta[side] -= value;
+            }
 
             return module;
         };
@@ -208,8 +209,8 @@ function () {
                 removeAll: removeCallbacks
             },
             delta: {
-                add: addDelta,
-                minus: minusDelta,
+                add: plusDelta,
+                substract: substractDelta,
                 reset: cleanDelta
             }
         });

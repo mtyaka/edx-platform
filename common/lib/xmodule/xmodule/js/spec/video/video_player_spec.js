@@ -728,7 +728,7 @@ function (VideoPlayer) {
                 it('tell VideoCaption to resize', function () {
                     expect(state.videoCaption.resize).toHaveBeenCalled();
                     expect(state.resizer.setMode).toHaveBeenCalledWith('both');
-                    expect(state.resizer.delta.minus).toHaveBeenCalled();
+                    expect(state.resizer.delta.substract).toHaveBeenCalled();
                 });
             });
 

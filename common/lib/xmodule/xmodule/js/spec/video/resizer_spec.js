@@ -208,13 +208,13 @@ function (Resizer) {
                 expect(realWidth).toBe(expectedWidth);
             });
 
-            it('minus delta align correctly by height', function () {
+            it('substract delta align correctly by height', function () {
                 var delta = 100,
                     expectedHeight = container.height() - delta,
                     realHeight;
 
                 resizer
-                    .delta.minus(delta, 'height')
+                    .delta.substract(delta, 'height')
                     .setMode('height');
 
                 realHeight = element.height();
@@ -222,13 +222,13 @@ function (Resizer) {
                 expect(realHeight).toBe(expectedHeight);
             });
 
-            it('minus delta align correctly by width', function () {
+            it('substract delta align correctly by width', function () {
                 var delta = 100,
                     expectedWidth = container.width() - delta,
                     realWidth;
 
                 resizer
-                    .delta.minus(delta, 'width')
+                    .delta.substract(delta, 'width')
                     .setMode('width');
 
                 realWidth = element.width();
@@ -242,7 +242,7 @@ function (Resizer) {
                     realWidth;
 
                 resizer
-                    .delta.minus(delta, 'width')
+                    .delta.substract(delta, 'width')
                     .delta.reset()
                     .setMode('width');
 
