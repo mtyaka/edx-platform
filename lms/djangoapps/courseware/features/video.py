@@ -2,18 +2,16 @@
 #pylint: disable=C0111
 
 from lettuce import world, step
-from nose.tools import assert_equal
-from splinter.request_handler.request_handler import RequestHandler
+import os
 import json
+import requests
 from common import i_am_registered_for_the_course, section_location, visit_scenario_item
 from django.utils.translation import ugettext as _
 from django.conf import settings
 from cache_toolbox.core import del_cached_content
 from xmodule.contentstore.content import StaticContent
-import os
-import requests
-from functools import partial
 from xmodule.contentstore.django import contentstore
+
 TEST_ROOT = settings.COMMON_TEST_DATA_ROOT
 LANGUAGES = settings.ALL_LANGUAGES
 
@@ -39,15 +37,145 @@ VIDEO_MENUS = {
     'speed': '.speed .menu',
 }
 
-VIDEO_BUTTONS = {
-    'CC': '.hide-subtitles',
-    'volume': '.volume',
-    'play': '.video_control.play',
-    'pause': '.video_control.pause',
-}
-
 coursenum = 'test_course'
 sequence = {}
+
+
+class ReuqestHandlerWithSessionId(object):
+    def get(self, url):
+        """
+        Sends a request.
+        """
+        kwargs = dict()
+
+        session_id = [{i['name']:i['value']} for i in  world.browser.cookies.all() if i['name']==u'sessionid']
+        if session_id:
+            kwargs.update({
+                'cookies': session_id[0]
+            })
+
+        response = requests.get(url, **kwargs)
+        self.response = response
+        self.status_code = response.status_code
+        self.headers = response.headers
+        self.content = response.content
+
+        return self
+
+    def is_success(self):
+        """
+        Returns `True` if the response was succeed, otherwise, returns `False`.
+        """
+        if self.status_code < 400:
+            return True
+        return False
+
+    def check_header(self, name, value):
+        """
+        Returns `True` if the response header exist and has appropriate value,
+        otherwise, returns `False`.
+        """
+        if value in self.headers.get(name, {}):
+            return True
+        return False
+
+
+def add_video_to_course(course, player_mode, hashes, display_name='Video'):
+    category = 'video'
+
+    kwargs = {
+        'parent_location': section_location(course),
+        'category': category,
+        'display_name': display_name,
+        'metadata': {},
+    }
+
+    if player_mode == 'html5':
+        kwargs['metadata'].update({
+            'youtube_id_1_0': '',
+            'youtube_id_0_75': '',
+            'youtube_id_1_25': '',
+            'youtube_id_1_5': '',
+            'html5_sources': HTML5_SOURCES
+        })
+    if player_mode == 'youtube_html5':
+        kwargs['metadata'].update({
+            'html5_sources': HTML5_SOURCES,
+        })
+    if player_mode == 'youtube_html5_unsupported_video':
+        kwargs['metadata'].update({
+            'html5_sources': HTML5_SOURCES_INCORRECT
+        })
+    if player_mode == 'html5_unsupported_video':
+        kwargs['metadata'].update({
+            'youtube_id_1_0': '',
+            'youtube_id_0_75': '',
+            'youtube_id_1_25': '',
+            'youtube_id_1_5': '',
+            'html5_sources': HTML5_SOURCES_INCORRECT
+        })
+
+    if hashes:
+        kwargs['metadata'].update(hashes[0])
+
+    conversions = {
+        'transcripts': json.loads,
+        'download_track': json.loads,
+        'download_video': json.loads,
+    }
+
+    for key in kwargs['metadata']:
+        if key in conversions:
+            kwargs['metadata'][key] = conversions[key](kwargs['metadata'][key])
+
+    course_location = world.scenario_dict['COURSE'].location
+    if 'sub' in kwargs['metadata']:
+        filename = _get_sjson_filename(kwargs['metadata']['sub'], 'en')
+        _upload_file(filename, course_location)
+
+    if 'transcripts' in kwargs['metadata']:
+        for lang, filename in kwargs['metadata']['transcripts'].items():
+            _upload_file(filename, course_location)
+
+    world.scenario_dict['VIDEO'] = world.ItemFactory.create(**kwargs)
+
+
+def _get_sjson_filename(videoId, lang):
+    if lang == 'en':
+        return 'subs_{0}.srt.sjson'.format(videoId)
+    else:
+        return '{0}_subs_{1}.srt.sjson'.format(lang, videoId)
+
+
+def _upload_file(filename, location):
+    path = os.path.join(TEST_ROOT, 'uploads/', filename)
+    f = open(os.path.abspath(path))
+    mime_type = "application/json"
+
+    content_location = StaticContent.compute_location(
+        location.org, location.course, filename
+    )
+    content = StaticContent(content_location, filename, mime_type, f.read())
+    contentstore().save(content)
+    del_cached_content(content.location)
+
+
+def _open_menu(menu):
+    world.browser.execute_script("$('{selector}').parent().addClass('open')".format(
+        selector=VIDEO_MENUS[menu]
+    ))
+
+
+def _navigate_to_an_item_in_a_sequence(number):
+    sequence_css = 'a[data-element="{0}"]'.format(number)
+    world.css_click(sequence_css)
+
+
+def _change_video_speed(speed):
+    world.browser.execute_script("$('.speeds').addClass('open')")
+    speed_css = 'li[data-speed="{0}"] a'.format(speed)
+    world.css_click(speed_css)
+
 
 @step('when I view the (.*) it does not have autoplay enabled$')
 def does_not_autoplay(_step, video_type):
@@ -90,57 +218,6 @@ def open_video(_step, player_id):
 def check_video_speed(_step, player_id, speed):
     speed_css = '.speeds p.active'
     assert world.css_has_text(speed_css, '{0}x'.format(speed))
-
-
-def add_video_to_course(course, player_mode, hashes, display_name='Video'):
-    category = 'video'
-
-    kwargs = {
-        'parent_location': section_location(course),
-        'category': category,
-        'display_name': display_name,
-        'metadata': {},
-    }
-
-    if player_mode == 'html5':
-        kwargs['metadata'].update({
-            'youtube_id_1_0': '',
-            'youtube_id_0_75': '',
-            'youtube_id_1_25': '',
-            'youtube_id_1_5': '',
-            'html5_sources': HTML5_SOURCES
-        })
-    if player_mode == 'youtube_html5':
-        kwargs['metadata'].update({
-            'html5_sources': HTML5_SOURCES,
-            'download_track': True,
-        })
-    if player_mode == 'youtube_html5_unsupported_video':
-        kwargs['metadata'].update({
-            'html5_sources': HTML5_SOURCES_INCORRECT
-        })
-    if player_mode == 'html5_unsupported_video':
-        kwargs['metadata'].update({
-            'youtube_id_1_0': '',
-            'youtube_id_0_75': '',
-            'youtube_id_1_25': '',
-            'youtube_id_1_5': '',
-            'html5_sources': HTML5_SOURCES_INCORRECT
-        })
-
-    if hashes:
-        kwargs['metadata'].update(hashes[0])
-
-    if 'transcripts' in kwargs['metadata']:
-        kwargs['metadata']['transcripts'] = json.loads(kwargs['metadata']['transcripts'])
-
-        if 'sub' in kwargs['metadata']:
-            _upload_file(kwargs['metadata']['sub'], 'en', world.scenario_dict['COURSE'].location)
-
-        for lang, videoId in kwargs['metadata']['transcripts'].items():
-            _upload_file(videoId, lang, world.scenario_dict['COURSE'].location)
-
-    world.scenario_dict['VIDEO'] = world.ItemFactory.create(**kwargs)
 
 
 @step('youtube server is up and response time is (.*) seconds$')
@@ -231,57 +308,9 @@ def select_language(_step, code):
     world.wait_for_ajax_complete()
 
 
-@step('I click on video button "([^"]*)"$')
-def click_button(_step, button):
-    world.css_find(VIDEO_BUTTONS[button]).click()
-
-
-def _upload_file(videoId, lang, location):
-    if lang == 'en':
-        filename = 'subs_{0}.srt.sjson'.format(videoId)
-    else:
-        filename = '{0}_subs_{1}.srt.sjson'.format(lang, videoId)
-
-    path = os.path.join(TEST_ROOT, 'uploads/', filename)
-    f = open(os.path.abspath(path))
-    mime_type = "application/json"
-
-    content_location = StaticContent.compute_location(
-        location.org, location.course, filename
-    )
-
-    sc_partial = partial(StaticContent, content_location, filename, mime_type)
-    content = sc_partial(f.read())
-
-    (thumbnail_content, thumbnail_location) = contentstore().generate_thumbnail(
-        content,
-        tempfile_path=None
-    )
-    del_cached_content(thumbnail_location)
-
-    if thumbnail_content is not None:
-        content.thumbnail_location = thumbnail_location
-
-    contentstore().save(content)
-    del_cached_content(content.location)
-
-
-def _navigate_to_an_item_in_a_sequence(number):
-    sequence_css = 'a[data-element="{0}"]'.format(number)
-    world.css_click(sequence_css)
-
-
-def _change_video_speed(speed):
-    world.browser.execute_script("$('.speeds').addClass('open')")
-    speed_css = 'li[data-speed="{0}"] a'.format(speed)
-    world.css_click(speed_css)
-
-
 @step('I click video button "([^"]*)"$')
 def click_button_video(_step, button_type):
-    world.wait_for_ajax_complete()
-    button = button_type.strip()
-    world.css_click(VIDEO_BUTTONS[button])
+    world.css_click(VIDEO_BUTTONS[button_type])
 
 
 @step('I see video starts playing from "([^"]*)" position$')
@@ -299,15 +328,8 @@ def seek_video_to_n_seconds(_step, seconds):
     world.browser.execute_script(jsCode)
 
 
-def _open_menu(menu):
-    world.browser.execute_script("$('{selector}').parent().addClass('open')".format(
-        selector=VIDEO_MENUS[menu]
-    ))
-
 @step('transcript is downloadable$')
-def transcript_is_downloaded(_step):
-    world.wait_for_ajax_complete()
-    download_button_url = world.css_find('.video-tracks a').first['href']
-    session_id_cookie = ({i['name']:i['value']} for i in  world.browser.cookies.all() if i['name']==u'sessionid').next()
-    result = requests.get(download_button_url, cookies=session_id_cookie)
-    assert_equal(result.status_code, 200)
+def transcript_is_downloadable(_step):
+    url = world.css_find('.video-tracks a').first['href']
+    assert ReuqestHandlerWithSessionId().get(url).is_success()
+
