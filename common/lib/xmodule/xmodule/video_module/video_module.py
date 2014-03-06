@@ -393,7 +393,7 @@ class VideoModule(VideoFields, XModule):
         """
         This is called to get transcript file for specific language.
 
-        youtube_id: str: must be one of youtube_ids.
+        youtube_id: str: must be one of youtube_ids or None if HTML video
 
         Logic flow:
 
